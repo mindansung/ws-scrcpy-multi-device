@@ -105,6 +105,15 @@ const front: webpack.Configuration = {
     resolve: {
         fallback: {
             path: 'path-browserify',
+            fs: false,
+            tls: false,
+            net: false,
+            zlib: false,
+            http: false,
+            https: false,
+            stream: false,
+            crypto: false,
+            assert: false,
         },
         extensions: ['.tsx', '.ts', '.js'],
     },

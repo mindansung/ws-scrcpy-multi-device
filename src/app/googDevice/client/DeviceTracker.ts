@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import '../../../style/devicelist.css';
 import { BaseDeviceTracker } from '../../client/BaseDeviceTracker';
 import { SERVER_PORT } from '../../../common/Constants';
@@ -15,6 +16,7 @@ import { ParamsDeviceTracker } from '../../../types/ParamsDeviceTracker';
 import { HostItem } from '../../../types/Configuration';
 import { ChannelCode } from '../../../common/ChannelCode';
 import { Tool } from '../../client/Tool';
+import * as child_process from 'child_process';
 
 type Field = keyof GoogDeviceDescriptor | ((descriptor: GoogDeviceDescriptor) => string);
 type DescriptionColumn = { title: string; field: Field };
@@ -169,7 +171,35 @@ export class DeviceTracker extends BaseDeviceTracker<GoogDeviceDescriptor, never
         return title.toLowerCase().replace(/\s/g, '_');
     }
 
-    protected buildDeviceRow(tbody: Element, device: GoogDeviceDescriptor): void {
+    // private runADBCMD(command:string,udid:string):Promise<string>{
+    //     return new Promise<string>((resolve, reject) => {
+    //         const cmd = 'adb';
+    //         const args = ['-s', `${udid}`, 'shell', command];
+    //         const adb = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    //         let output = '';
+
+    //         adb.stdout.on('data', (data) => {
+    //             output += data.toString();
+    //             console.log( `stdout: ${data.toString().replace(/\n$/, '')}`);
+    //         });
+
+    //         adb.stderr.on('data', (data) => {
+    //             console.error( `stderr: ${data}`);
+    //         });
+
+    //         adb.on('error', (error: Error) => {
+    //             console.error( `failed to spawn adb process.\n${error.stack}`);
+    //             reject(error);
+    //         });
+
+    //         adb.on('close', (code) => {
+    //             console.log( `adb process (${args.join(' ')}) exited with code ${code}`);
+    //             resolve(output);
+    //         });
+    //     });
+    // }
+
+    protected buildDeviceRow(tbody: Element, device: GoogDeviceDescriptor, cnt = 0) {
         let selectedInterfaceUrl = '';
         let selectedInterfaceName = '';
         const blockClass = 'desc-block';
@@ -177,22 +207,73 @@ export class DeviceTracker extends BaseDeviceTracker<GoogDeviceDescriptor, never
         const isActive = device.state === DeviceState.DEVICE;
         let hasPid = false;
         const servicesId = `device_services_${fullName}`;
-        const row = html`<div class="device ${isActive ? 'active' : 'not-active'}">
-            <div class="device-header">
-                <div class="device-name">${device['ro.product.manufacturer']} ${device['ro.product.model']}</div>
-                <div class="device-serial">${device.udid}</div>
-                <div class="device-version">
-                    <div class="release-version">${device['ro.build.version.release']}</div>
-                    <div class="sdk-version">${device['ro.build.version.sdk']}</div>
+        const tempSWName = `${device['ro.boot.bootloader']}`;
+        const softWare = tempSWName.substring(tempSWName.length - 4);
+        
+        const row = html`
+            <div class="testingButton"></div>
+            <div class="device ${isActive ? 'active' : 'not-active'}">
+                <div class="device-header">
+                    <div class="device-name">${device['ro.product.model']}</div>
+                    <div class="device-serial">${device.udid}</div>
+                    <br />
+                    <div class="DUT">DUT ${cnt}</div>
+                    <br />
+                    <div class="s/w">S/W version: ${softWare}</div>
+                    <br />
+                    <div class="carrierId">Carrier ID: ${device['ro.boot.carrierid']}</div>
+                    <br />
+                    <div>
+                        Status:${isActive ? 'Online' : 'Offline'}
+                        <div class="device-state" title="State: ${device.state}">
+                            <br />
+                        </div>
+                    </div>
+                    <br />
+                    <div class="auto-Running">
+                        Automatic Running:Start/Stop
+                        <button id="autoRunning" value="">${isActive ? 'start' : 'stop'}</button>
+                    </div>
+                    <br />
+                    <div class="logging">
+                        Logging:Start/Stop <button id="logButton" value="">${isActive ? 'start' : 'stop'}</button>
+                    </div>
+                    <br />
+                    <div class="saveLog">
+                        <p>
+                            Save Log <button id="saveLog" value="">save</button>
+                            <br />
+                            - fileName: <br />
+                            - 1) to server's local drive <br />2) to client's local drive
+                        </p>
+                    </div>
+                    <br />
                 </div>
-                <div class="device-state" title="State: ${device.state}"></div>
+                <div id="${servicesId}" class="services"></div>
             </div>
-            <div id="${servicesId}" class="services"></div>
-        </div>`.content;
+        `.content;
+        
         const services = row.getElementById(servicesId);
         if (!services) {
             return;
         }
+
+        // const cmd = `pull /sdcard/log C:/Users/tjdal/Desktop`
+        
+        const btn = document.createElement('button.adbBtn');
+        const btnId = document.getElementById('logButton');
+        btnId?.appendChild(btn);
+        const adb_devices = child_process.exec('adb devices', function(error, stdout, stderr) {
+            console.log('stdout: ' + stdout);
+            console.log('stderr: ' + stderr);
+            if (error !== null) {
+              console.log('exec error: ' + error);
+            }
+          });
+        btn.addEventListener('click', () => {
+            // this.runADBCMD(cmd, device.udid);
+            adb_devices;
+        });
 
         DeviceTracker.tools.forEach((tool) => {
             const entry = tool.createEntryForDeviceList(device, blockClass, this.params);
@@ -209,6 +290,8 @@ export class DeviceTracker extends BaseDeviceTracker<GoogDeviceDescriptor, never
 
         const streamEntry = StreamClientScrcpy.createEntryForDeviceList(device, blockClass, fullName, this.params);
         streamEntry && services.appendChild(streamEntry);
+        
+
 
         DESC_COLUMNS.forEach((item) => {
             const { title } = item;
@@ -342,6 +425,7 @@ export class DeviceTracker extends BaseDeviceTracker<GoogDeviceDescriptor, never
                 store: false,
             });
         }
+        return this;
     }
 
     protected getChannelCode(): string {

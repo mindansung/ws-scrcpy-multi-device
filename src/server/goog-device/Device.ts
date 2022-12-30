@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { AdbExtended } from './adb';
 import AdbKitClient from '@dead50f7/adbkit/lib/adb/client';
 import PushTransfer from '@dead50f7/adbkit/lib/adb/sync/pushtransfer';
@@ -52,6 +53,8 @@ export class Device extends TypedEmitter<DeviceEvents> {
             'ro.product.model': '',
             'ro.product.cpu.abi': '',
             'last.update.timestamp': 0,
+            'ro.boot.carrierid': '',
+            'ro.boot.bootloader':'',
         };
         this.client = AdbExtended.createClient();
         this.setState(state);
@@ -95,6 +98,34 @@ export class Device extends TypedEmitter<DeviceEvents> {
     public killProcess(pid: number): Promise<string> {
         const command = `kill ${pid}`;
         return this.runShellCommandAdbKit(command);
+    }
+
+    static async runADBCMD(command:string,udid:string):Promise<string>{
+        return new Promise<string>((resolve, reject) => {
+            const cmd = 'adb';
+            const args = ['-s', `${udid}`, 'shell', command];
+            const adb = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+            let output = '';
+
+            adb.stdout.on('data', (data) => {
+                output += data.toString();
+                console.log( `stdout: ${data.toString().replace(/\n$/, '')}`);
+            });
+
+            adb.stderr.on('data', (data) => {
+                console.error( `stderr: ${data}`);
+            });
+
+            adb.on('error', (error: Error) => {
+                console.error( `failed to spawn adb process.\n${error.stack}`);
+                reject(error);
+            });
+
+            adb.on('close', (code) => {
+                console.log( `adb process (${args.join(' ')}) exited with code ${code}`);
+                resolve(output);
+            });
+        });
     }
 
     public async runShellCommandAdb(command: string): Promise<string> {

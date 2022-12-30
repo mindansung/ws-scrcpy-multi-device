@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { ManagerClient } from './ManagerClient';
 import { Message } from '../../types/Message';
 import { BaseDeviceDescriptor } from '../../types/BaseDeviceDescriptor';
@@ -103,10 +104,38 @@ export abstract class BaseDeviceTracker<DD extends BaseDeviceDescriptor, TE> ext
         const devices = this.getOrCreateTableHolder();
         const tbody = this.getOrBuildTableBody(devices);
 
+        let cnt = 1;
+        
         const block = this.getOrCreateTrackerBlock(tbody, this.trackerName);
-        data.forEach((item) => {
-            this.buildDeviceRow(block, item);
-        });
+        
+        const tTable = document.createElement('table');
+        tTable.id='tTable';
+        block.appendChild(tTable);
+        const tTableBody = document.createElement('tbody.tTableBody');
+        tTable.append(tTableBody)
+
+        for(let i =0;i<4;i++){
+            
+            data.forEach((item) => {
+
+
+           const r1 = document.createElement('tr.r1');
+           r1.setAttribute("style","float:left;width:410px;height:750px");
+           const c1 = document.createElement('td.c1');
+           const c2 = document.createElement('td.c2');
+           const temp = document.createElement('iframe');
+           temp.src = 'http://localhost:8000/#!action=stream&udid=29e98e18aa3f7ece&player=mse&ws=ws%3A%2F%2Flocalhost%3A8000%2F%3Faction%3Dproxy-adb%26remote%3Dtcp%253A8886%26udid%3D29e98e18aa3f7ece';
+           temp.setAttribute("style","width:400px;height:725px");
+
+           r1.appendChild(c1);
+           r1.appendChild(c2);
+           tTableBody.appendChild(r1);
+           this.buildDeviceRow(c1,item,cnt);
+           c2.append(temp);
+            cnt++;
+            });
+            
+        }
     }
 
     private setNameValue(parent: Element | null, name: string): void {
@@ -140,7 +169,7 @@ export abstract class BaseDeviceTracker<DD extends BaseDeviceDescriptor, TE> ext
         return el;
     }
 
-    protected abstract buildDeviceRow(tbody: Element, device: DD): void;
+    protected abstract buildDeviceRow(tbody: Element, device: DD,cnt:number): any;
 
     protected onSocketClose(event: CloseEvent): void {
         if (this.destroyed) {
